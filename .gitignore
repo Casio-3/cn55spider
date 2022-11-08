@@ -1,0 +1,21 @@
+.idea/
+.venv/
+
+# node app
+app/src/node_modules/
+app/src/logs/
+
+# proxy certs
+proxy/certs/
+
+# python pycache
+*/__pycache__/
+*.py[cod]
+
+# out of challenge environment
+foobar.md
+add_task.py
+exploits/
+traffic/
+
+

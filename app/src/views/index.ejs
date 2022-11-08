@@ -1,0 +1,38 @@
+<form action="/guest/crawl" method="post" autocomplete="off">
+    <div id="focus"></div>
+    <h1>Welcome to cn55spider</h1>
+    <input name="username" id="username" type="text" half="" placeholder="Username">
+    <button type="button" id="fool" onclick="solver()">PoW Solver</button>
+    <input name="entry" id="entry" type="text" placeholder="Entry" value="https://example.com">
+    <input name="proof" id="proof" type="text" placeholder="<%= proof %>" value="">
+    <div id="res"></div>
+    <input type="submit" value="Crawl it">
+</form>
+<script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="/js/script.js"></script>
+<script src="/js/md5.js" type="app/worker"></script>
+<script>
+    // Not the fastest way, you'd better do it yourself using your own script:-)
+    function solver() {
+        alert('Ok, my boy, PoW Solver is about to work. Close the alert and take a look at the console for status.');
+        console.info('This helper is not recommended for you, just offer a way to confirm my PoW works.');
+        console.info('You\'d better do it yourself using your own scripts:-)');
+        console.info('If you take too long to calculate the md5, you can refresh the page for another lucky try.');
+        var proof = document.getElementById('proof').placeholder.split(" == ")[1]
+        var num = 0
+        var t = setInterval(() => {
+            if (num > 5)
+                num = 0
+            num++
+            var text = "calculating" + ".".repeat(num)
+            console.log(text);
+        }, 500);
+        const work = new Worker('/js/md5.js');
+        work.postMessage(proof);
+        work.onmessage = (event) => {
+            document.getElementById('proof').value = event.data
+            clearInterval(t);
+            console.log("Done!");
+        };
+    }
+</script>

@@ -1,0 +1,67 @@
+version: "3"
+services:
+  app:
+    build: ./app/
+    container_name: cn55_app
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+    depends_on:
+      - mongodb
+      - redis
+    env_file:
+      - ./app/.env
+    networks:
+      - inside
+  proxy:
+    build: ./proxy/
+    container_name: cn55_proxy
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+      - HOST=localhost
+    depends_on:
+      - app
+    ports:
+      - "0.0.0.0:443:8080" # challenge expose
+    networks:
+      - inside
+      - default
+  scrapy:
+    build: ./scrapy/
+    container_name: cn55_crawler
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+    depends_on:
+      - redis
+      - mongodb
+    networks:
+      - inside
+      - default
+  redis:
+    image: redis:alpine
+    container_name: cn55_redis
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    command: >
+      --requirepass 'sTrOnG_R3D1s_p@s5woRd_HeRE'
+      --bind 0.0.0.0
+    networks:
+      - inside
+  mongodb:
+    build: ./mongodb/
+    container_name: cn55_mongodb
+    restart: always
+    environment:
+      TZ: Asia/Shanghai
+      MONGO_INITDB_ROOT_USERNAME: toor
+      MONGO_INITDB_ROOT_PASSWORD: Y0U_CANNOT_GUE55_7H1S
+      MONGO_INITDB_DATABASE: result
+    networks:
+      - inside
+
+networks:
+  inside:
+    internal: true

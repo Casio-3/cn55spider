@@ -1,0 +1,25 @@
+body {
+    display: inline-block;
+    height: 100vh;
+    margin: 0;
+    color: white;
+}
+
+body.error {
+    background: #D09B52 center/cover no-repeat;
+}
+
+body.success {
+    background: #4990ca center/cover no-repeat;
+  }
+  
+  h1 {
+    margin: 0.8em 3rem;
+    font: 4em Roboto;
+  }
+  
+  p {
+    display: inline-block;
+    margin: 0.2em 3rem;
+    font: 2em Roboto;
+  }

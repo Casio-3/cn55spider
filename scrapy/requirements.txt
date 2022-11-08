@@ -1,0 +1,4 @@
+scrapy~=2.6.2
+pymongo~=4.2.0
+scrapy_redis
+pyOpenSSL==22.0.0
