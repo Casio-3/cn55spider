@@ -12,10 +12,10 @@ This repo includes the source code of *[CNSS](https://cnss.io) Recruit 2022* web
 
 大致思路如下，
 
-1. scrapy -- SSRF to LFI 读取 scrapy 爬虫本地配置文件
-2. proxy -- HTTP2 走私 app 的 `/admin` 路由
-3. app(guest) -- NoSQL Injection 可查询预留 guest 用户 casio3 爬取过的 flag
-4. app(admin) -- NodeJS SSTI RCE
+1. scrapy --> SSRF to LFI 读取 scrapy 爬虫本地配置文件
+2. proxy --> HTTP2 走私 app 的 `/admin` 路由
+3. app(guest) --> NoSQL Injection 可查询预留 guest 用户 casio3 爬取过的 flag
+4. app(admin) --> NodeJS SSTI RCE
 5. app(admin) --> mongodb --> search 接口查 admin 预留的 flag
 6. app(admin) --> SSRF 打认证 Redis --> Pickle  反序列化 RCE (scrapy)
 
@@ -29,7 +29,13 @@ This repo includes the source code of *[CNSS](https://cnss.io) Recruit 2022* web
 
 `app_dumper.sh` 用于记录访问流量，`app_flush.sh` 用于清理 app 日志，定时清理的话可以在主机写 crontab
 
-由于 proxy 需要用到 HTTP2，为 HTTPS 配置的证书置于  `proxy/certs/`  目录下，entrypoint 已经写好了 localhost 的自签证书，在 `proxy/hitch.conf` 中将 `pem-file` 改为需要使用的证书文件即可
+由于 proxy 需要用到 HTTP2，为 HTTPS 配置的证书置于  `proxy/certs/`  目录下，需自行创建，entrypoint 已经写好了 localhost 的自签证书，在 `proxy/hitch.conf` 中将 `pem-file` 改为需要使用的证书文件即可
+
+sh 脚本加执行权限
+
+```bash
+find . -type f -name "*.sh" -exec chmod +x {} \;
+```
 
 > 作为新生赛，每步 flag 都有对应题目描述，从简起见就略去了
 
@@ -46,7 +52,50 @@ exploits 比较杂乱就没有放出来，这里记录一下每一步 flag 的�
   ```
 
   尝试几次爬取可以推知爬虫逻辑，然后自行构造恶意页面供爬虫爬取，拿到 cmdline、environ 等基础信息，去看一些 scrapy 相关文档得知架构，摸到爬虫配置再一系列闪电五连鞭可以读爬虫的源码，第一步的 flag 位置提示直接放进了 `settings.py`，到这儿直接去读就可以
+  
+  另外前端的 pow solver 是后来给的，本意是想让选手自行写一下，be like
+  
+  ```python
+  import requests
+  from pwn import *
 
+  url = 'https://challenge.address/'
+  charset = string.ascii_letters + string.digits
+  user = 'N0obcAs10'
+  entry_url = 'http://baidu.com/'
+
+  s = requests.Session()
+  s.verify = False
+  requests.urllib3.disable_warnings(requests.urllib3.exceptions.InsecureRequestWarning)
+
+
+  def solve_pow():
+      html = s.get(url=url).text
+      task = re.search(r"== \w{6}", html)[0][-6:]
+      log.info(f"Q: md5(xxxx)[-6:] == {task}")
+      proof = iters.mbruteforce(lambda x: md5sumhex(x.encode())[-6:] == task, alphabet=charset, length=4, method='fixed')
+      if proof:
+          log.success(f"A: md5({proof}) == {md5sumhex(proof.encode())}")
+          return proof
+      else:
+          log.failure("solution not found, check it.")
+          return None
+
+
+  def push_entry(username, entry):
+      proof = solve_pow()
+      res = s.post(url=url + 'guest/crawl',
+                  data={"username": username, "entry": entry, "proof": proof})
+      if "Success" in res.text:
+          log.success(f"{username} push entry: {entry}")
+      else:
+          log.failure("push failed.")
+
+
+  push_entry(user, entry_url)
+
+  ```
+  
 - 请求走私
 
   ```
@@ -58,11 +107,11 @@ exploits 比较杂乱就没有放出来，这里记录一下每一步 flag 的�
   Host: app:8082
   ```
 
-  观察 Response Header 是可以看到 `X-Varnish` 的，后续 hint 也给出了 [Wappalyzer](https://chrome.google.com/webstore/detail/wappalyzer-technology-pro/gppongmhjkpfnbhagpmjfkannfbllamg) 提示查看网站技术栈，搜寻漏洞可以摸到 **CVE-2021-36740**，且题目 guest 和 admin 比较明显，访问 admin 路由会出现 `Access Denied` 字样，推知走私 admin 的思路
+  观察 Response Header 是可以看到 `X-Varnish` 的，后续 hint 也给出了 [Wappalyzer](https://chrome.google.com/webstore/detail/wappalyzer-technology-pro/gppongmhjkpfnbhagpmjfkannfbllamg) 提示查看网站技术栈，搜寻漏洞可以摸到 **[CVE-2021-36740](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-36740)**，且题目 guest 和 admin 比较明显，访问 admin 路由会出现 `Access Denied` 字样，推知走私 admin 的思路
 
   构造过程中注意开头发 POST 包，且发包间隔不能太长，这样能被封装到一个 TCP packet 内（具体可以自行 dump 流量看）
 
-  这样请求到 varnish 后，HTTP2 转 HTTP1.1 再发给后端 app 就会被拆分，绕过 proxy 处对 Authorization 的鉴权
+  构造好的请求到 varnish 后，HTTP2 转 HTTP1.1 再发给后端 app 就会被拆分，绕过 proxy 处对 Authorization 的鉴权
 
 - NoSQL Injection 1
 
@@ -76,7 +125,7 @@ exploits 比较杂乱就没有放出来，这里记录一下每一步 flag 的�
   ?username=casio3&entry[$ne]=null
   ```
 
-- NodeJS SSTI RCE(jsRender)
+- NodeJS SSTI RCE (jsRender)
 
   用 jsRender 直接塞了个 RCE 洞给选手，注意到访问 admin 路由有 Set-Cookie 设置默认的 admin name，且回显中有 admin，尝试修改名称发现 welcome banner 有相应变化，再凭此测试 SSTI payload 即可
 
